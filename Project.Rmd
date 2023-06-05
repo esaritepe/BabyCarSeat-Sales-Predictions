@@ -1,0 +1,723 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# 0 Introduction 
+
+## 0.1 Loading and splitting dataset
+```{r}
+#Load and split data into training and testing 
+set.seed (501)
+cardata=read.csv("carseat.csv", header = T, stringsAsFactors = T)
+train=sample(1:nrow(cardata), 400)
+cardata.train =cardata [train ,]
+cardata.test=cardata [-train ,]
+```
+
+## 0.2 Preliminary analysis 
+
+```{r}
+# Defining the binary categorical variables as such
+cardata$Urban = as.factor(cardata$Urban)
+cardata$US = as.factor(cardata$US)
+```
+
+```{r}
+head(cardata)
+```
+
+```{r}
+# Scatterplot matrix
+pairs(cardata[,c(1:7,10)])
+```
+
+```{r}
+# Correlation matrix
+CorMatrix = cor(cardata[,c(1:7,10)], method = "pearson")
+
+library(corrplot)
+corrplot(CorMatrix, method = "number")
+```
+Notable positive correlation between price and competitor price, and median income and education level of the location
+Notable negative correlation between price and sales at each location
+
+
+```{r}
+# Size of the dataset
+
+dim(cardata)
+```
+10 regression variables and 1 response variable (Sales)
+
+
+# 1. Stepwise selection
+
+## 1.1 Using AIC criteria
+
+```{r}
+#using stepAIC function in Mass 
+library(MASS)
+#MLR - Null Model (Model with only intercept)
+nullModel=lm(Sales~1, data=cardata.train) 
+
+#MLR - First order full model
+fullModel=lm(Sales~Price+CompPrice+Income+Education+Age+Advertising+Accidents+Urban+US+ShelveLoc, data=cardata.train)
+```
+
+### 1.1.1 Forward selection based on AIC
+
+```{r}
+#Automatic Forward selection based on AIC
+stepAIC(nullModel,scope=list(lower=nullModel,upper=fullModel),direction="forward")
+```
+
+Forward selection (AIC): Sales ~ ShelveLoc + Price + Advertising + Education + Age
+
+### 1.1.2 Backward selection based on AIC
+
+```{r}
+#Automatic Backward elimination based on AIC 
+stepAIC(fullModel,scope=list(lower=nullModel,upper=fullModel),direction="backward")
+
+```
+
+Backward selection (AIC): Sales ~ Price + Education + Age + Advertising + ShelveLoc
+
+### 1.3 Bi-directional selection based on AIC
+
+```{r}
+#Automatic bi-directional selection based on AIC
+stepAIC(fullModel,scope=list(lower=nullModel,upper=fullModel),direction="both")
+```
+
+Bi-direction selection (AIC): Sales ~ Price + Education + Age + Advertising +ShelveLoc
+
+#### Conslusion: using all three stepwise methods (foward, backward, bi-directional) based on AIC, we have Price, Education, Age, Advertising, ShelveLoc as the chosen predictors.
+
+## 1.2 Using BIC criteria
+
+### 1.2.1 Forward selection based on BIC
+
+```{r}
+#Automatic Forward selection based on BIC
+stepAIC(nullModel,scope=list(lower=nullModel,upper=fullModel),direction="forward",k=log(nrow(cardata.train)))
+```
+
+Forward selection (BIC): Sales ~ ShelveLoc + Price + Advertising + Education
+
+### 1.2.2 Backward selection based on BIC
+
+```{r}
+#Automatic Backward elimination based on BIC 
+stepAIC(fullModel,scope=list(lower=nullModel,upper=fullModel),direction="backward",k=log(nrow(cardata.train)))
+```
+
+Backward selection (BIC): Sales ~ Price + Education + Advertising + ShelveLoc
+
+### 1.2.3 Bi-directional selection based on BIC
+
+```{r}
+#Automatic bi-directional selection based on BIC
+stepAIC(fullModel,scope=list(lower=nullModel,upper=fullModel),direction="both",k=log(nrow(cardata.train)))
+```
+
+Bi-direction selection (BIC): Sales ~ Price + Education + Advertising + ShelveLoc
+
+#### Conclusion: using all three stepwise methods (foward, backward, bi-directional) based on BIC, we have Price, Education, Advertising, ShelveLoc as the chosen predictors.
+
+### 1.3. Testing the selected models
+
+### 1.3.1 Fitting MLR Model using 5 predictors selected based on AIC
+
+```{r}
+#Fitted model for selected predictors (from AIC)
+selectedModel=lm(Sales~Price+Education+Age+Advertising+ShelveLoc, data=cardata.train)
+summary(selectedModel)
+```
+
+MLR model (stepwise selection - AIC):
+
+$$\hat{Sales}= 20.581-0.076*Price+0.082*Education+0.026*Age+0.079*Advertising+8.826*ShelveLocGood+2.774*ShelveLocMedium$$
+### 1.3.2 Fitting MLR Model using 4 predictors selected based on BIC
+
+```{r}
+#Fitted model for selected predictors (from BIC)
+selectedModel2=lm(Sales~Price+Education+Advertising+ShelveLoc, data=cardata.train)
+summary(selectedModel2)
+```
+
+MLR model (stepwise - BIC):
+
+$$\hat{Sales}= 21.499-0.076*Price+0.084*Education+0.084*Advertising+8.911*ShelveLocGood+2.714*ShelveLocMedium$$
+### 1.3.3 Checking assumptions of the 5-predictor model based on AIC
+
+```{r}
+#diagnostics for selected model using AIC
+library(MASS); library(lmtest)
+stud.residuals = studres(selectedModel)
+fitted.values = selectedModel$fitted.values
+
+plot(x=fitted.values, y=stud.residuals, xlab="fitted values", ylab="studentized residuals", cex.lab=1.3, main=paste0("p-value for the Breusch-Pagan test is: ", round(bptest(selectedModel)$p.value, 3)))
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+
+plot(x=cardata.train$Price,y=stud.residuals,xlab="Price",ylab="studentized residuals",main="",cex.lab=1.3)
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+plot(x=cardata.train$Education,y=stud.residuals,xlab="Education",ylab="studentized residuals",main="",cex.lab=1.3)
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+plot(x=cardata.train$Age,y=stud.residuals,xlab="Age",ylab="studentized residuals",main="",cex.lab=1.3)
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+plot(x=cardata.train$Advertising,y=stud.residuals,xlab="Advertising",ylab="studentized residuals",main="",cex.lab=1.3)
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+
+par(mfrow=c(1,1))
+library(car)
+#Normal QQ plot
+qqnorm(stud.residuals,main=paste0("p-value for the Shapiro-Wilk test is: ", round(shapiro.test(stud.residuals)$p.value,3)),cex.lab=1.5)
+abline(a=0,b=1,col="turquoise1")
+
+#Vif values
+vif(selectedModel)
+
+#outliers, leverage and cook's distance
+par(mfrow=c(3,1))
+plot(cardata.train$Sales,fitted.values,xlab="Observed response",ylab="Fitted response")
+abline(a=0,b=1,col=2)
+plot(hatvalues(selectedModel),type="h",ylab="Leverage",cex.lab=1.5)
+n=nrow(cardata.train)
+p=length(coefficients(selectedModel))
+cutLev=2*p/n
+abline(h=cutLev,col="turquoise1")
+plot(cooks.distance(selectedModel),ylab="Cook's distance",type="h")
+abline(h=1,col="turquoise1")
+```
+
+### 1.3.4 Checking assumptions of the 5-predictor model based on AIC
+
+```{r}
+#diagnostics for selected model using BIC
+stud.residuals2 = studres(selectedModel2)
+fitted.values2 = selectedModel2$fitted.values
+
+plot(x=fitted.values2, y=stud.residuals2, xlab="fitted values", ylab="studentized residuals", cex.lab=1.3, main=paste0("p-value for the Breusch-Pagan test is: ", round(bptest(selectedModel2)$p.value, 3)))
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+
+plot(x=cardata.train$Price,y=stud.residuals2,xlab="Price",ylab="studentized residuals",main="",cex.lab=1.3)
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+plot(x=cardata.train$Education,y=stud.residuals2,xlab="Education",ylab="studentized residuals",main="",cex.lab=1.3)
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+plot(x=cardata.train$Advertising,y=stud.residuals2,xlab="Advertising",ylab="studentized residuals",main="",cex.lab=1.3)
+abline(h=0,col="turquoise1");abline(h=-3,col="turquoise1",lty=2);abline(h=3,col="turquoise1",lty=2)
+
+## checking normality
+par(mfrow=c(1,1))
+#Normal QQ plot
+qqnorm(stud.residuals2,main=paste0("p-value for the Shapiro-Wilk test is: ", round(shapiro.test(stud.residuals2)$p.value,3)),cex.lab=1.5)
+abline(a=0,b=1,col="turquoise1")
+
+#Vif values
+vif(selectedModel2)
+
+#outliers, leverage and cook's distance
+par(mfrow=c(3,1))
+plot(cardata.train$Sales,fitted.values2,xlab="Observed response",ylab="Fitted response")
+abline(a=0,b=1,col=2)
+plot(hatvalues(selectedModel2),type="h",ylab="Leverage",cex.lab=1.5)
+n=nrow(cardata.train)
+p=length(coefficients(selectedModel2))
+cutLev=2*p/n
+abline(h=cutLev,col="turquoise1")
+plot(cooks.distance(selectedModel2),ylab="Cook's distance",type="h")
+abline(h=1,col="turquoise1")
+```
+
+### 1.4. Comparing the selected models
+
+```{r}
+# RMSE
+library(Metrics)
+rmse(cardata.test$Sales,predict(selectedModel,cardata.test)) #AIC model
+rmse(cardata.test$Sales,predict(selectedModel2,cardata.test)) #BIC model
+
+# RSS
+summary(selectedModel)$r.squared #AIC model
+summary(selectedModel2)$r.squared #BIC model
+
+# Adjusted RSS
+summary(selectedModel)$adj.r.squared #AIC model
+summary(selectedModel2)$adj.r.squared #BIC model
+
+# means of residuals 
+mean(cardata.test$Sales-predict(selectedModel,cardata.test)) #AIC model 
+mean(cardata.test$Sales-predict(selectedModel2,cardata.test)) #BIC model
+
+# means of absolute residuals 
+mae(cardata.test$Sales,predict(selectedModel,cardata.test)) #AIC model
+mae(cardata.test$Sales,predict(selectedModel2,cardata.test)) #BIC model
+
+# histogram of residuals
+hist(cardata.test$Sales-predict(selectedModel,cardata.test)) #AIC model 
+hist(cardata.test$Sales-predict(selectedModel2,cardata.test)) #BIC model
+
+# correlations between of predicted and observed values
+predicted=predict(selectedModel,newdata = cardata.test)
+predicted2=predict(selectedModel2,newdata = cardata.test)
+cor(cardata.test$Sales,predicted)
+cor(cardata.test$Sales,predicted2)
+```
+
+### 1.5. using p value 
+
+```{r}
+library(olsrr)
+ols_step_forward_p(fullModel)
+```
+
+
+```{r}
+library(olsrr)
+ols_step_backward_p(fullModel)
+```
+
+```{r}
+library(olsrr)
+ols_step_both_p(fullModel)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+# 2. Best subset selection
+
+
+
+```{r}
+# First order full model
+
+library(leaps)
+fullmodel = regsubsets(Sales~., data = cardata, nvmax = 11)
+summary(fullmodel)
+
+```
+
+
+
+
+```{r}
+names(summary(fullmodel))
+```
+
+
+```{r}
+# Performance indicators
+
+Performance = data.frame(cbind(
+  Cp = summary(fullmodel)$cp,
+  r2 = summary(fullmodel)$rsq,
+  Adj_r2 = summary(fullmodel)$adjr2,
+  BIC = summary(fullmodel)$bic
+))
+```
+
+
+```{r}
+Performance
+```
+
+
+```{r}
+# Mallow's Cp 
+
+par(mfrow=c(1,2))
+
+plot(fullmodel, scale = "Cp")
+plot(x = 1:11, y = summary(fullmodel)$cp, type = "o", xlab = "Number of parameters", ylab = "Mallow's Cp")
+
+```
+
+Mallow's Cp = Price + Education + Age + Ads + ShelvingLocationGood + ShelvingLocationMed
+
+
+
+```{r}
+#Adjusted R-squared
+
+par(mfrow=c(1,2))
+
+plot(fullmodel, scale = "adjr2")
+plot(x = 1:11, y = summary(fullmodel)$adjr2, type = "o", xlab = "Number of parameters", ylab = "Adjusted R-squared")
+
+```
+
+Adj R-squared = Price + Education + Age + Ads + ShelvingLocationGood + ShelvingLocationMed
+
+
+```{r}
+# BIC
+
+par(mfrow=c(1,2))
+
+plot(fullmodel, scale = "bic")
+plot(x = 1:11, y = summary(fullmodel)$bic, type = "o", xlab = "Number of parameters", ylab = "BIC")
+
+```
+
+BIC = Price + Education + Ads + ShelvingLocationGood + ShelvingLocationMed
+
+#### We can potentially select models with 5 variables (BIC) or 6 variables (Adjusted R-sq, Mallow's Cp) 
+
+
+```{r}
+# Creating the best 5-variable model...
+bestsubset5 = lm(Sales~Price + Education + Advertising + ShelveLoc, data = cardata)
+summary(bestsubset5)
+```
+
+```{r}
+library(car)
+vif(bestsubset5)
+```
+
+Little to no multicollinearity
+
+
+```{r}
+{plot(x = predict(bestsubset5), y = bestsubset5$residuals)
+abline(h = 0, col = "red")}
+```
+
+Randomly distributed residuals
+
+
+```{r}
+{qqnorm(bestsubset5$residuals)
+qqline(bestsubset5$residuals)}
+```
+
+```{r}
+shapiro.test(bestsubset5$residuals)
+```
+
+Normally distributed residuals with little deviation in the tail of the normal QQ plot, but the Shapiro-Wilk test indicates the normality of the best subset model.
+
+```{r}
+{plot(x = bestsubset5$fitted.values, y = cardata$Sales)
+abline(a = 0, b = 1, col = "red")}
+```
+
+Comparing the fitted value of the best subset model and the actual Sales value, there appears to be no outliers present
+
+```{r}
+n = nrow(cardata)
+p = length(coefficients(bestsubset5))
+cutlevel = 2*p/n
+
+{plot(hatvalues(bestsubset5), type = 'h')
+abline(h = cutlevel, col = "red")}
+```
+
+Two noticeable high leverage points present
+
+```{r}
+{plot(cooks.distance(bestsubset5), type = "h")
+abline(h = 1, col = "red")}
+```
+
+But none of the high leverage points are influential points according to the Cook's Distance
+
+
+
+```{r}
+# Creating the best 6-variable model...
+bestsubset6 = lm(Sales~Price + Education + Age + Advertising + ShelveLoc, data = cardata)
+```
+
+```{r}
+library(car)
+vif(bestsubset6)
+```
+
+Little to no multicollinearity
+
+
+```{r}
+{plot(x = predict(bestsubset6), y = bestsubset6$residuals)
+abline(h = 0, col = "red")}
+```
+
+Randomly distributed residuals
+
+
+```{r}
+{qqnorm(bestsubset6$residuals)
+qqline(bestsubset6$residuals)}
+```
+
+```{r}
+shapiro.test(bestsubset6$residuals)
+```
+
+Normally distributed residuals with little deviation in the tail of the normal QQ plot, but the Shapiro-Wilk test indicates the normality of the best subset model.
+
+```{r}
+{plot(x = bestsubset6$fitted.values, y = cardata$Sales)
+abline(a = 0, b = 1, col = "red")}
+```
+
+Comparing the fitted value of the best subset model and the actual Sales value, there appears to be no outliers present
+
+```{r}
+n = nrow(cardata)
+p = length(coefficients(bestsubset6))
+cutlevel = 2*p/n
+
+{plot(hatvalues(bestsubset6), type = 'h')
+abline(h = cutlevel, col = "red")}
+```
+
+Two noticeable high leverage points present
+
+```{r}
+{plot(cooks.distance(bestsubset6), type = "h")
+abline(h = 1, col = "red")}
+```
+
+But none of the high leverage points are influential points according to the Cook's Distance
+
+
+#### Neither 5-variable model nor 6-variable model violate any assumptions for the linear regression analysis. In order to finalize the number of variables in the best subset model, we proceed to see which on of the two models yield better performance (lower error) under cross validation.
+
+
+```{r}
+# 400 data points in the training set
+# 100 data points in the testing set
+
+dim(cardata.train)
+dim(cardata.test)
+```
+
+
+Mallow's Cp = 6 variable model
+
+R-squared = 6 variable model
+
+Adj R-squared = 6 variable model
+
+BIC = 5 variable model
+
+```{r}
+# Names of the 5 variables 
+
+summary(fullmodel)$outmat[5, ]
+```
+The variables involved for 5-variable model are Price, Education, Advertising, and Shelving Location.
+
+
+```{r}
+# Names of the 6 variables
+
+summary(fullmodel)$outmat[6, ]
+```
+The variables involved for 6-variable model are Price, Education, Age, Advertising, and Shelve Location.
+
+
+
+```{r}
+# 5-variable model established from the training set
+
+training.model5 = lm(Sales~Price + Education + Advertising + ShelveLoc, data = cardata.train)
+summary(training.model5)
+```
+
+```{r}
+# 6-variable model estalibhsed from the training set
+
+training.model6 = lm(Sales~Price + Education + Age + Advertising + ShelveLoc, data = cardata.train)
+summary(training.model6)
+```
+
+
+
+```{r}
+# MAE of 5-variable model
+
+prediction5 = predict(training.model5, cardata.test)
+
+MAE = function(actual, predicted){mean(abs(actual - predicted))}
+MAE(cardata.test$Sales, prediction5)
+```
+
+```{r}
+# MAE of 6-variable model
+
+prediction6 = predict(training.model6, cardata.test)
+
+MAE = function(actual, predicted){mean(abs(actual - predicted))}
+MAE(cardata.test$Sales, prediction6)
+```
+6-variable model yields lower Mean Average Error (MAE) than 5-variable model. Therefore, according to the MAE, we are in favor of 6-variable model when using best subset approach.
+
+
+
+```{r}
+# RMSE and cor of 5-variable model
+
+RMSE = function(actual, predicted){sqrt(mean((actual - predicted)^2))}
+RMSE(cardata.test$Sales, prediction5)
+cor(cardata.test$Sales ,prediction5)
+```
+
+```{r}
+# RMSE and cor of 6-variable model
+
+RMSE = function(actual, predicted){sqrt(mean((actual - predicted)^2))}
+RMSE(cardata.test$Sales, prediction6)
+cor(cardata.test$Sales ,prediction6)
+```
+6-variable model yields lower Root Mean Squared Error (RMSE) than 5-variable model. Therefore, according to the RMSE, we are in favor of 6-variable model when using best subset approach.
+
+
+# 3. Regression tree
+
+
+## 3.1 Create large regression tree (with depth of 30)
+```{r}
+#Install packages if they are not already installed
+#install.packages('rpart.plot')
+#install.packages('Metrics')
+#install.packages('rpart')
+
+#Loads library
+library(rpart)
+library(rpart.plot)
+library(Metrics)
+
+set.seed(50)
+
+#Creates large regression tree model using testing set and prints the data
+rt_model_full = rpart(Sales~., data=cardata.train, control=rpart.control(cp=0.0000001))
+#jpeg(file="Project_fulltree.jpeg",width=6, height=4, units="in",res=400)
+rpart.plot(rt_model_full, type=3, digits=3, fallen.leaves = T)
+
+#Creates a complexity plot
+printcp(rt_model_full)
+#jpeg(file="Project_cp_vals.jpeg",width=6, height=4, units="in",res=400)
+plotcp(rt_model_full)
+
+```
+
+
+## 3.2 Prediction 
+
+```{r}
+
+#Creates prediction model
+p1 = predict(rt_model_full, cardata.test)
+
+#Creates mean absolute error function
+MAE = function(actual, predicted){mean(abs(actual-predicted))}
+MAE(cardata.test$Sales, p1)
+
+#Calculates root mean square error 
+rmse(cardata.test$Sales, p1)
+
+
+full_tree.residuals = cardata.test$Sales -p1
+hist(full_tree.residuals)
+mean(full_tree.residuals)
+
+cor(cardata.test$Sales ,p1)
+
+```
+
+
+## 3.3 Pruning the large tree
+
+```{r}
+#Create function that finds the best split such that the x error is within 1 standard deviation of the best tree  (with smallest x error term)
+cp.select <- function(big.tree) {
+  min.x <- which.min(big.tree$cptable[, 4]) #column 4 is xerror
+  for(i in 1:nrow(big.tree$cptable)) {
+    if(big.tree$cptable[i, 4] < big.tree$cptable[min.x, 4] + big.tree$cptable[min.x, 5]) return(big.tree$cptable[i, 1]) #column 5: xstd, column 1: cp 
+  }
+}
+
+
+#Pruning the full tree
+pruned_tree = prune(rt_model_full, cp.select(rt_model_full))
+#jpeg(file="Project_prunedtree.jpeg",width=6, height=4, units="in",res=400)
+rpart.plot(pruned_tree, type=3, digits=3, fallen.leaves = T)
+which.min(rt_model_full$cptable[, 4])
+```
+
+
+## 3.4 Prediction 
+
+```{r}
+
+#Creates a new prediction model using the pruned tree
+p2=predict(pruned_tree, cardata.test)
+
+#Calculates MAE
+MAE(cardata.test$Sales, p2)
+
+#Calculates RMSE
+rmse(cardata.test$Sales, p2)
+
+pruned_tree.residuals = cardata.test$Sales -p2
+hist(pruned_tree.residuals)
+mean(pruned_tree.residuals)
+
+cor(cardata.test$Sales ,p2)
+```
+
+
+## 3.5 Create default regression tree with rpart()
+```{r}
+
+
+
+#Creates large regression tree model using testing set and prints the data
+rt_model_default = rpart(Sales~., data=cardata.train)
+#jpeg(file="Project_default_tree.jpeg",width=6, height=4, units="in",res=400)
+rpart.plot(rt_model_default, type=3, digits=3, fallen.leaves = T)
+
+#Creates a complexity plot
+printcp(rt_model_default)
+#jpeg(file="Project_cp_vals.jpeg",width=6, height=4, units="in",res=400)
+plotcp(rt_model_default)
+
+```
+
+
+## 3.6 Prediction 
+
+```{r}
+
+#Creates prediction model
+p3 = predict(rt_model_default, cardata.test)
+
+#Creates mean absolute error function
+MAE = function(actual, predicted){mean(abs(actual-predicted))}
+MAE(cardata.test$Sales, p3)
+
+#Calculates root mean square error 
+rmse(cardata.test$Sales, p3)
+
+
+default_tree.residuals = cardata.test$Sales -p3
+hist(default_tree.residuals)
+mean(default_tree.residuals)
+
+cor(cardata.test$Sales ,p3)
+
+```
+
