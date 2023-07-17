@@ -18,28 +18,33 @@ Results
 <p align="center">
   <img src="https://github.com/esaritepe/BabyCarSeat-Sales-Predictions/blob/main/screenshots/bcs_assumptions.png"/>
 </p>
+
 * Checking the regression assumptions for the candidate models using traditional methods
 <br/><br/>
 
 <p align="center">
   <img src="https://github.com/esaritepe/BabyCarSeat-Sales-Predictions/blob/main/screenshots/bcs_best_subset.png"/>
 </p>
+
 * Best Subset Selection plots using Mallow's Cp, Adjusted R-squared, and Bayesian Information Criterion (BIC) as performance indicators
 
 <p align="center">
   <img src="https://github.com/esaritepe/BabyCarSeat-Sales-Predictions/blob/main/screenshots/bsc_decision_tree.png"/>
 </p>
+
 * The finalized decision tree with 18 nodes. This tree was chosen has it had the best predictive capabilities. 
 
 <p align="center">
   <img src="https://github.com/esaritepe/BabyCarSeat-Sales-Predictions/blob/main/screenshots/bcs_stats_table.png"/>
 </p>
+
 * A table showing the statistical analysis results featuring the MAE, RMSE, and correlation of all the tested models. As underlined in the table, the most reliable model was determined to be a tie between a 5-predictor Stepwise model and a 5-predictor Best Subset model. 
 <br/><br/>
 
 <p align="center">
   <img src="https://github.com/esaritepe/BabyCarSeat-Sales-Predictions/blob/main/screenshots/bcs_formula.png"/>
 </p>
+
 * The final regression model we suggested using price, education, age, advertising, and shelving location as predictors. 
 
 Conclusion
