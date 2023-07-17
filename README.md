@@ -1,7 +1,7 @@
 # Best Predictive Model for Baby Car Seat Sales
 
 <p align="center">
-  <img src="https://data.family-nation.com/imgprodotto/safety-1st-sweet-safe-baby-car-seat-group-0-1-full-red-0-18-kg-car-seats-group-1-2-3_47602.jpg" width=500/>
+  <img src="https://data.family-nation.com/imgprodotto/safety-1st-sweet-safe-baby-car-seat-group-0-1-full-red-0-18-kg-car-seats-group-1-2-3_47602.jpg" width=200/>
 </p>
 
 Description 
