@@ -19,6 +19,7 @@ Results
   <img src="https://github.com/esaritepe/BabyCarSeat-Sales-Predictions/blob/main/screenshots/bcs_assumptions.png"/>
 </p>
 * Checking the regression assumptions for the candidate models using traditional methods
+<br/><br/>
 
 <p align="center">
   <img src="https://github.com/esaritepe/BabyCarSeat-Sales-Predictions/blob/main/screenshots/bcs_best_subset.png"/>
