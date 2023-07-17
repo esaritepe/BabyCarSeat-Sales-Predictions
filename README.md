@@ -35,6 +35,7 @@ Results
 </p>
 * A table showing the statistical analysis results featuring the MAE, RMSE, and correlation of all the tested models. As underlined in the table, the most reliable model was determined to be a tie between a 5-predictor Stepwise model and a 5-predictor Best Subset model. 
 
+
 <p align="center">
   <img src="https://github.com/esaritepe/BabyCarSeat-Sales-Predictions/blob/main/screenshots/bcs_formula.png"/>
 </p>
